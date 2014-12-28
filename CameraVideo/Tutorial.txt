@@ -1,0 +1,216 @@
+1. Crear proyecto
+   http://www.sgoliver.net/blog/?p=1278
+
+   File -> New Android Application
+
+   Aplication Name: CameraVideo
+   Project Name: CameraVideo
+   Package Name: npi.cameravideo
+
+   Minimum Required SDK: API 8:Android 2.2
+   Target SDK: API 19: Android 4.4 (KitKat)
+   Compile With: API 19: "
+   Theme: None
+
+   Next -> Next
+
+   Configure Launcher Icon -> Browse (Y escoger una imagen como icono o dejar la que hay por defecto)
+
+   Next
+
+   Empty Activity
+
+   Finish
+
+2. Configuración proyecto:
+http://developer.android.com/training/camera/photobasics.html
+
+   -Problemas R.java:
+   http://www.arquitecturajava.com/android-r-java/
+   http://www.victorpascual.es/2011/10/04/regenerar-el-archivo-r-java-en-android/
+   http://developer.android.com/sdk/installing/installing-adt.html
+   -Solución, finalmente optada:
+   Eliminar las carpetas values con distintas versiones y dejar sólo la carpeta /values con el 
+   archivo string.xml. Se generará automáticamente el archivo R.java en la carpeta /gen.
+   Si aún no, entonces Eclipse -> Project -> Clean -> Selecciona el proyecto en el que estés trabajando 
+   Y vuelve a construir el proyecto manualmente, si no está ticado" para que se construya 
+   automáticamente (Eclipse -> Project -> Build automatically). Y listo, ya debería de funcionar.
+   
+   -Modificar el archivo AndroidManifest, solicitar Permisos de Cámara, vídeo, audio y almacenamiento SD:
+   <manifest ... >
+    ...
+    <uses-permission android:name="android.permission.CAMERA" />   
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.RECORD_VIDEO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-feature android:name="android.hardware.camera" />
+    ...
+   </manifest>
+
+   -Añadir dos botones, uno para Camara y otro para Video y sus correspondientes puntos de vista
+   en /layout/activity_main.xml
+        ...
+        <Button
+        android:id="@+id/btnCamera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="37dp"
+        android:layout_marginTop="53dp"
+        android:text="Camera" />
+
+   		<!-- To display picture taken -->
+        <ImageView
+            android:id="@+id/imgPreview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+ 
+        <!-- To preview video recorded -->
+        <VideoView
+            android:id="@+id/videoPreview"
+            android:layout_width="wrap_content"
+            android:layout_height="400dp"
+            android:visibility="gone" />
+
+        <requestFocus />
+
+        <Button
+            android:id="@+id/btnRecordVideo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBaseline="@+id/btnCamera"
+            android:layout_alignBottom="@+id/btnCamera"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="48dp"
+            android:text="Video" />
+        ...
+
+3. Agregar código para la funcionalidad, clase MainActivity.java:
+
+   -Variables para el control de la actividad, añadir en la clase MainActivity:
+    //Control de la solicitud de actividad
+    private static final int CAMERA_CAPTURE_IMAGE_REQUEST_CODE = 100;
+    private static final int CAMERA_CAPTURE_VIDEO_REQUEST_CODE = 200;
+    public static final int MEDIA_TYPE_IMAGE = 1;
+    public static final int MEDIA_TYPE_VIDEO = 2;
+    
+    //Nombre de directorio de almacenamiento de imágenes y vídeos
+    private static final String IMAGE_DIRECTORY_NAME = "Hello Camera";
+
+    //Dirección de almacenamiento
+    private Uri fileUri;
+ 
+    //Control de las dos posibles vistas y dos botones (creados en el punto 2 anterior)
+    private ImageView imgPreview;
+    private VideoView videoPreview;
+    private Button btnCamera, btnRecordVideo;
+
+
+   -Añadir en el método onCreate:
+   	imgPreview = (ImageView) findViewById(R.id.imgPreview);
+        videoPreview = (VideoView) findViewById(R.id.videoPreview);
+        btnCamera = (Button) findViewById(R.id.btnCamera);
+        btnRecordVideo = (Button) findViewById(R.id.btnRecordVideo);
+ 
+        /**
+         * Capture image button click event
+         * */
+        btnCamera.setOnClickListener(new View.OnClickListener() {
+ 
+            @Override
+            public void onClick(View v) {
+                // capture picture
+                captureImage();
+            }
+        });
+ 
+        /**
+         * Record video button click event
+         */
+        btnRecordVideo.setOnClickListener(new View.OnClickListener() {
+ 
+            @Override
+            public void onClick(View v) {
+                recordVideo();
+            }
+        });
+
+   -Capturar una imagen, añadir un método:
+    private void captureImage() {
+    	// Dar un nombre a la fotografía para almacenarla en la carpeta por defecto del teléfono
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+    	
+    	ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.TITLE, "IMG_" + timeStamp + ".jpg");
+ 
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+     
+        //fileUri = getOutputMediaFileUri(MEDIA_TYPE_IMAGE);
+        fileUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values); // store content values
+        
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
+     
+        // start el intent" de captura
+        startActivityForResult(intent, CAMERA_CAPTURE_IMAGE_REQUEST_CODE);
+    }
+    
+   -Grabar un vídeo, añadir un método:
+   private void recordVideo() {
+    	
+        Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+     
+        //fileUri = getOutputMediaFileUri(MEDIA_TYPE_VIDEO);
+     
+        // set video quality
+        intent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 1);
+     
+        //intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
+     
+        // start the video capture Intent
+        startActivityForResult(intent, CAMERA_CAPTURE_VIDEO_REQUEST_CODE);
+    }
+
+   -Actividad que se produce una vez finalizado la Captura/Grabación de la cámara:
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Comprobar la solicitud del usuario de guardar la fotografía
+        if (requestCode == CAMERA_CAPTURE_IMAGE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                previewCapturedImage();
+            } else if (resultCode == RESULT_CANCELED) {
+                Toast.makeText(getApplicationContext(),
+                        "User cancelled image capture", Toast.LENGTH_SHORT)
+                        .show();
+            } else {
+                Toast.makeText(getApplicationContext(),
+                        "Sorry! Failed to capture image", Toast.LENGTH_SHORT)
+                        .show();
+            }
+        }
+    }
+
+    -Almacenar la imagen desde la ruta, añadir método:
+    private void previewCapturedImage() {
+        try {
+            // hide video preview
+            videoPreview.setVisibility(View.GONE);
+ 
+            imgPreview.setVisibility(View.VISIBLE);
+ 
+            // bimatp factory
+            BitmapFactory.Options options = new BitmapFactory.Options();
+ 
+            // downsizing image as it throws OutOfMemory Exception for larger
+            // images
+            options.inSampleSize = 8;
+ 
+            final Bitmap bitmap = BitmapFactory.decodeFile(fileUri.getPath(),
+                    options);
+ 
+            imgPreview.setImageBitmap(bitmap);
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+    }
